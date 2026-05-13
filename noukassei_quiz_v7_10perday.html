@@ -1,0 +1,401 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.app{padding:1rem 0;max-width:680px;margin:0 auto;font-family:var(--font-sans)}
+.header{text-align:center;margin-bottom:1.5rem}
+.header h1{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+.tab{padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;transition:all .2s;border-radius:0}
+.tab.active{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary)}
+.quiz-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.5rem;margin-bottom:1rem}
+.q-label{font-size:12px;color:var(--color-text-secondary);letter-spacing:.05em;margin-bottom:.75rem}
+.q-main{text-align:center;padding:1.25rem;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:1rem;min-height:100px;display:flex;align-items:center;justify-content:center}
+.hint{font-size:13px;color:var(--color-text-secondary);text-align:center;margin-bottom:1rem}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.choice{padding:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);font-size:20px;cursor:pointer;text-align:center;transition:all .15s;color:var(--color-text-primary)}
+.choice:hover{background:var(--color-background-secondary)}
+.choice.correct{background:#EAF3DE;border-color:#639922;color:#3B6D11}
+.choice.wrong{background:#FCEBEB;border-color:#A32D2D;color:#791F1F}
+.rmsg{text-align:center;font-size:14px;font-weight:500;padding:.75rem;border-radius:var(--border-radius-md);margin-bottom:1rem;display:none}
+.rmsg.ok{background:#EAF3DE;color:#3B6D11;display:block}
+.rmsg.ng{background:#FCEBEB;color:#791F1F;display:block}
+.action-btn{width:100%;padding:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);font-size:15px;cursor:pointer;color:var(--color-text-primary);transition:all .15s}
+.action-btn:hover{background:var(--color-background-secondary)}
+.score-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:.75rem 1rem;background:var(--color-background-secondary);border-radius:var(--border-radius-md);flex-wrap:wrap;gap:6px}
+.score-bar span{font-size:13px;color:var(--color-text-secondary)}
+.score-bar strong{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);margin-left:6px;vertical-align:middle}
+.bv{background:#E1F5EE;color:#0F6E56}.bk{background:#EEEDFE;color:#534AB7}.br{background:#FAEEDA;color:#854F0B}
+.new-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:var(--border-radius-md);background:#FAEEDA;color:#854F0B;margin-left:6px;vertical-align:middle}
+.type-input{width:100%;padding:12px 16px;font-size:22px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);text-align:center;outline:none;margin-bottom:8px;font-family:var(--font-sans)}
+.type-input:focus{border-color:var(--color-border-primary);box-shadow:0 0 0 2px rgba(0,0,0,0.06)}
+.type-input.ok{border-color:#639922;background:#EAF3DE;color:#3B6D11}
+.type-input.ng{border-color:#A32D2D;background:#FCEBEB;color:#791F1F}
+.submit-btn{width:100%;padding:11px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);font-size:15px;cursor:pointer;color:var(--color-text-primary);transition:all .15s;margin-bottom:8px}
+.all-done{text-align:center;padding:2rem 1rem;background:var(--color-background-secondary);border-radius:var(--border-radius-lg);margin-bottom:1rem}
+.all-done p{font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:.5rem}
+.all-done small{font-size:13px;color:var(--color-text-secondary);display:block;margin-top:6px}
+.unlock-info{font-size:13px;color:var(--color-text-secondary);text-align:center;padding:.5rem;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:1rem}
+</style>
+
+<div class="app">
+  <div class="header">
+    <h1>🧠 右脳活性クイズ</h1>
+    <p id="date-label" style="font-size:13px;color:var(--color-text-secondary);margin-top:4px">読み込み中...</p>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchMode('hira')">ひらがな並べ替え<span class="badge bv">記憶</span></button>
+    <button class="tab" onclick="switchMode('kanji')">漢字分解<span class="badge bk">視覚</span></button>
+    <button class="tab" onclick="switchMode('rotate')">漢字回転<span class="badge br">理解</span></button>
+  </div>
+  <div id="quiz-area"><p style="text-align:center;color:var(--color-text-secondary);padding:2rem">読み込み中...</p></div>
+</div>
+
+<script>
+const MS_DAY=86400000;
+const PER_DAY=10; // 毎日解禁される問題数
+
+function jstDayIndex(){
+  // 2025-05-10を起点（day0）として経過日数を返す
+  const base=new Date('2025-05-10T00:00:00+09:00').getTime();
+  const nowJst=Date.now()+9*3600000;
+  return Math.max(0,Math.floor((nowJst-base)/MS_DAY));
+}
+function jstNow(){return new Date(Date.now()+9*3600000);}
+function jstTodayStr(){const t=jstNow();return`${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')}`;}
+
+// ひらがな — 60問
+const ALL_HIRA=[
+  {id:'h01',word:"しんかんせん",answer:"しんかんせん",hint:"0系から始まり700系で進化した乗り物"},
+  {id:'h02',word:"とうきょうたわー",answer:"とうきょうたわー",hint:"333という数字にまつわる赤い構造物"},
+  {id:'h03',word:"おとしだま",answer:"おとしだま",hint:"ポチ袋の中身、1月の楽しみ"},
+  {id:'h04',word:"なつまつり",answer:"なつまつり",hint:"盆踊りと屋台が並ぶ夜の賑わい"},
+  {id:'h05',word:"ひまわりばたけ",answer:"ひまわりばたけ",hint:"ゴッホが描いた花が一面に広がる場所"},
+  {id:'h06',word:"かたつむり",answer:"かたつむり",hint:"でんでんむしむし、殻を背負う軟体動物"},
+  {id:'h07',word:"せみのぬけがら",answer:"せみのぬけがら",hint:"羽化した後に木の幹に残る茶色い形見"},
+  {id:'h08',word:"さくらふぶき",answer:"さくらふぶき",hint:"入学式の翌週に起きる淡いピンクの嵐"},
+  {id:'h09',word:"ゆきだるま",answer:"ゆきだるま",hint:"鼻がにんじんで目が炭の白い人形"},
+  {id:'h10',word:"もみじがり",answer:"もみじがり",hint:"狩りといっても何も捕まえない秋の行事"},
+  {id:'h11',word:"こいのぼり",answer:"こいのぼり",hint:"5月の空を泳ぐ鱗のない魚"},
+  {id:'h12',word:"ほたるがり",answer:"ほたるがり",hint:"梅雨明け前夜に川べりで灯りを探す行為"},
+  {id:'h13',word:"たんぽぽわた",answer:"たんぽぽわた",hint:"風が運ぶ植物の白い手紙"},
+  {id:'h14',word:"きりたんぽ",answer:"きりたんぽ",hint:"秋田の米を串に巻いて焼いたもの"},
+  {id:'h15',word:"なわとびたいかい",answer:"なわとびたいかい",hint:"縄を回して跳ぶ競技の集い"},
+  {id:'h16',word:"おにぎりのたね",answer:"おにぎりのたね",hint:"海苔に包まれた白い球体の中心にある秘密"},
+  {id:'h17',word:"すいかわり",answer:"すいかわり",hint:"夏の砂浜で目隠しして棒を振る行事"},
+  {id:'h18',word:"はなびたいかい",answer:"はなびたいかい",hint:"夜空に咲く一瞬の大輪の集い"},
+  {id:'h19',word:"らんどせる",answer:"らんどせる",hint:"6年間背負い続ける四角い相棒"},
+  {id:'h20',word:"たいやきやさん",answer:"たいやきやさん",hint:"鯛の形をした焼き菓子を売る店"},
+  {id:'h21',word:"おはじき",answer:"おはじき",hint:"指ではじいて遊ぶ平たいガラスの粒"},
+  {id:'h22',word:"かきごおり",answer:"かきごおり",hint:"削った氷に糖蜜をかけた夏の定番"},
+  {id:'h23',word:"ちょうちょむすび",answer:"ちょうちょむすび",hint:"蝶の羽に見立てたリボンの結び方"},
+  {id:'h24',word:"とんぼがえり",answer:"とんぼがえり",hint:"行ってすぐ帰ってくること、または宙返り"},
+  {id:'h25',word:"まつたけごはん",answer:"まつたけごはん",hint:"秋の王様と呼ばれるきのこを炊き込んだもの"},
+  {id:'h26',word:"うぐいすもち",answer:"うぐいすもち",hint:"春告げ鳥の名を冠した緑色の和菓子"},
+  {id:'h27',word:"ねこじゃらし",answer:"ねこじゃらし",hint:"猫が飛びつく、道端のふわふわした雑草"},
+  {id:'h28',word:"かがみもち",answer:"かがみもち",hint:"お正月に飾る丸い餅が二段重なったもの"},
+  {id:'h29',word:"しめかざり",answer:"しめかざり",hint:"玄関に飾る正月の結界"},
+  {id:'h30',word:"どんぐりころころ",answer:"どんぐりころころ",hint:"池にはまって出られなくなった丸い木の実"},
+  {id:'h31',word:"おてだま",answer:"おてだま",hint:"小豆などを布袋に入れて投げて遊ぶもの"},
+  {id:'h32',word:"ふきのとう",answer:"ふきのとう",hint:"雪解けの頃に地面から顔を出す苦い春の使者"},
+  {id:'h33',word:"いちごがり",answer:"いちごがり",hint:"ハウスの中で赤い果実を摘む体験農業"},
+  {id:'h34',word:"あさがお",answer:"あさがお",hint:"夏休みの観察日記の定番、朝だけ咲く"},
+  {id:'h35',word:"きんぎょすくい",answer:"きんぎょすくい",hint:"夏祭りで薄い紙を使って挑む金色の魚との勝負"},
+  {id:'h36',word:"しちごさん",answer:"しちごさん",hint:"奇数の年齢に着物を着て神社へ行く行事"},
+  {id:'h37',word:"おはようございます",answer:"おはようございます",hint:"朝に交わす挨拶、松の内でも使う"},
+  {id:'h38',word:"てるてるぼうず",answer:"てるてるぼうず",hint:"晴れを願って軒下に吊るす白い人形"},
+  {id:'h39',word:"なのはなばたけ",answer:"なのはなばたけ",hint:"菜の花が黄色いじゅうたんを作る春の畑"},
+  {id:'h40',word:"かわせみ",answer:"かわせみ",hint:"川の宝石と呼ばれる青緑色の小鳥"},
+];
+
+// 漢字分解 — 40問
+const ALL_KANJI=[
+  {id:'k01',answer:"森",hint:"三位一体の緑の哲学",choices:["森","林","木","茂"],svgParts:[{char:"木",x:90,y:18,rotate:210,scale:.55},{char:"木",x:35,y:82,rotate:130,scale:.55},{char:"木",x:148,y:82,rotate:310,scale:.55}]},
+  {id:'k02',answer:"明",hint:"古代人が時間を読んだ二つの光源",choices:["明","晴","昭","眼"],svgParts:[{char:"日",x:45,y:52,rotate:195,scale:.75},{char:"月",x:148,y:52,rotate:310,scale:.75}]},
+  {id:'k03',answer:"岩",hint:"地殻から突き出た固体の塊",choices:["岩","石","峰","崖"],svgParts:[{char:"山",x:95,y:22,rotate:240,scale:.7},{char:"石",x:95,y:95,rotate:150,scale:.7}]},
+  {id:'k04',answer:"花",hint:"受粉のために昆虫を誘う植物の戦略器官",choices:["花","草","芽","茎"],svgParts:[{char:"艹",x:95,y:22,rotate:200,scale:.75},{char:"化",x:95,y:95,rotate:330,scale:.75}]},
+  {id:'k05',answer:"鳴",hint:"声帯を持つ生き物が発する振動",choices:["鳴","鳥","鳩","鴨"],svgParts:[{char:"口",x:40,y:55,rotate:220,scale:.65},{char:"鳥",x:148,y:55,rotate:140,scale:.65}]},
+  {id:'k06',answer:"語",hint:"記号の連鎖で他者の脳内に像を結ぶ行為",choices:["語","話","読","詩"],svgParts:[{char:"言",x:40,y:55,rotate:280,scale:.68},{char:"吾",x:148,y:55,rotate:170,scale:.68}]},
+  {id:'k07',answer:"電",hint:"雷雲の下で生まれ銅線を走る見えない力",choices:["電","雷","雨","雲"],svgParts:[{char:"雨",x:95,y:22,rotate:190,scale:.65},{char:"申",x:95,y:98,rotate:320,scale:.65}]},
+  {id:'k08',answer:"休",hint:"生産性を捨てた時間の使い方",choices:["休","体","仕","作"],svgParts:[{char:"人",x:40,y:55,rotate:250,scale:.78},{char:"木",x:150,y:55,rotate:130,scale:.78}]},
+  {id:'k09',answer:"男",hint:"XY染色体を持つ哺乳類の性別",choices:["男","田","力","勇"],svgParts:[{char:"田",x:95,y:22,rotate:215,scale:.7},{char:"力",x:95,y:98,rotate:340,scale:.7}]},
+  {id:'k10',answer:"信",hint:"根拠なく相手の言葉を受け入れる認知行動",choices:["信","仁","件","任"],svgParts:[{char:"亻",x:40,y:55,rotate:230,scale:.78},{char:"言",x:150,y:55,rotate:160,scale:.78}]},
+  {id:'k11',answer:"晴",hint:"水蒸気が散った後の大気の状態",choices:["晴","曇","雨","空"],svgParts:[{char:"日",x:45,y:45,rotate:170,scale:.72},{char:"青",x:148,y:52,rotate:280,scale:.72}]},
+  {id:'k12',answer:"好",hint:"報酬系が反応する対象への接近動機",choices:["好","妹","妻","姉"],svgParts:[{char:"女",x:42,y:55,rotate:200,scale:.75},{char:"子",x:148,y:55,rotate:310,scale:.75}]},
+  {id:'k13',answer:"湖",hint:"陸に囲まれた淡水の塊",choices:["湖","池","沼","海"],svgParts:[{char:"氵",x:35,y:55,rotate:210,scale:.72},{char:"古",x:148,y:55,rotate:140,scale:.72}]},
+  {id:'k14',answer:"雪",hint:"大気中の水分が六角形に結晶化したもの",choices:["雪","雨","霜","霰"],svgParts:[{char:"雨",x:95,y:25,rotate:195,scale:.65},{char:"彡",x:95,y:98,rotate:330,scale:.65}]},
+  {id:'k15',answer:"峠",hint:"登りと下りが反転する標高点",choices:["峠","峰","崖","嶺"],svgParts:[{char:"山",x:48,y:40,rotate:230,scale:.65},{char:"上",x:95,y:95,rotate:160,scale:.6},{char:"下",x:148,y:40,rotate:320,scale:.6}]},
+  {id:'k16',answer:"炎",hint:"酸化反応が放出する光と熱の可視化",choices:["炎","火","焔","灯"],svgParts:[{char:"火",x:70,y:35,rotate:190,scale:.72},{char:"火",x:125,y:90,rotate:320,scale:.72}]},
+  {id:'k17',answer:"肝",hint:"解毒と代謝を担う臓器の俗称",choices:["肝","胆","腸","脳"],svgParts:[{char:"月",x:42,y:55,rotate:200,scale:.75},{char:"干",x:148,y:55,rotate:130,scale:.75}]},
+  {id:'k18',answer:"霧",hint:"地表付近に漂う微細な水滴の集合体",choices:["霧","雲","霞","靄"],svgParts:[{char:"雨",x:95,y:22,rotate:185,scale:.62},{char:"務",x:95,y:98,rotate:310,scale:.62}]},
+  {id:'k19',answer:"婚",hint:"二者が法的紐帯を結ぶ社会制度",choices:["婚","嫁","娘","姫"],svgParts:[{char:"女",x:42,y:55,rotate:240,scale:.72},{char:"昏",x:150,y:52,rotate:160,scale:.68}]},
+  {id:'k20',answer:"岐",hint:"一本道が複数に分かれる分岐点",choices:["岐","枝","支","技"],svgParts:[{char:"山",x:45,y:45,rotate:215,scale:.68},{char:"支",x:148,y:55,rotate:145,scale:.68}]},
+  {id:'k21',answer:"暮",hint:"一日の終わりに太陽が沈む時間帯",choices:["暮","墓","基","莫"],svgParts:[{char:"艹",x:95,y:15,rotate:170,scale:.7},{char:"日",x:95,y:95,rotate:290,scale:.7}]},
+  {id:'k22',answer:"涙",hint:"悲しみや感動が液体として外に溢れる現象",choices:["涙","汗","泡","波"],svgParts:[{char:"氵",x:38,y:55,rotate:210,scale:.72},{char:"戻",x:148,y:55,rotate:140,scale:.7}]},
+  {id:'k23',answer:"磁",hint:"鉄を引き寄せる不可視の力を持つ物質",choices:["磁","石","硬","砕"],svgParts:[{char:"石",x:42,y:55,rotate:225,scale:.7},{char:"兹",x:148,y:55,rotate:150,scale:.68}]},
+  {id:'k24',answer:"腸",hint:"消化吸収の大半を担う管状の臓器",choices:["腸","胃","肝","脾"],svgParts:[{char:"月",x:42,y:55,rotate:200,scale:.75},{char:"昜",x:148,y:52,rotate:320,scale:.68}]},
+  {id:'k25',answer:"墨",hint:"硯で磨り書を書くための黒い固形物",choices:["墨","黒","炭","塗"],svgParts:[{char:"黒",x:95,y:25,rotate:195,scale:.65},{char:"土",x:95,y:98,rotate:310,scale:.68}]},
+  {id:'k26',answer:"潮",hint:"月の引力が動かす海面の周期的な昇降",choices:["潮","波","流","浪"],svgParts:[{char:"氵",x:38,y:55,rotate:230,scale:.72},{char:"朝",x:148,y:52,rotate:155,scale:.65}]},
+  {id:'k27',answer:"驚",hint:"予期しない刺激に対する扁桃体の即時反応",choices:["驚","恐","怖","慌"],svgParts:[{char:"敬",x:55,y:45,rotate:200,scale:.65},{char:"馬",x:145,y:70,rotate:320,scale:.65}]},
+  {id:'k28',answer:"籠",hint:"竹を編んで作った物を入れる容器",choices:["籠","篭","竹","筒"],svgParts:[{char:"竹",x:95,y:18,rotate:185,scale:.62},{char:"龍",x:95,y:95,rotate:305,scale:.62}]},
+  {id:'k29',answer:"薫",hint:"花や香木が空気中に放つ揮発性分子",choices:["薫","薬","草","葉"],svgParts:[{char:"艹",x:95,y:15,rotate:190,scale:.7},{char:"熏",x:95,y:92,rotate:315,scale:.65}]},
+  {id:'k30',answer:"霊",hint:"肉体から切り離された意識の残影とされるもの",choices:["霊","零","雨","雲"],svgParts:[{char:"雨",x:95,y:22,rotate:200,scale:.62},{char:"巫",x:95,y:98,rotate:330,scale:.65}]},
+];
+
+// 漢字回転 — 40問
+const ALL_ROTATE=[
+  {id:'r01',kanji:"信",answer:"信",choices:["信","仁","件","任"],hint:"根拠なく相手を受け入れること"},
+  {id:'r02',kanji:"森",answer:"森",choices:["森","林","木","茂"],hint:"光合成する存在が密集した空間"},
+  {id:'r03',kanji:"明",answer:"明",choices:["明","暗","晴","朝"],hint:"光子の量が多い状態を指す形容詞"},
+  {id:'r04',kanji:"語",answer:"語",choices:["語","話","読","詩"],hint:"記号の列で意味を運ぶ単位"},
+  {id:'r05',kanji:"電",answer:"電",choices:["電","雷","雨","雲"],hint:"電子の流れが生み出す物理現象"},
+  {id:'r06',kanji:"国",answer:"国",choices:["国","回","囚","図"],hint:"主権・領土・国民で定義される概念"},
+  {id:'r07',kanji:"学",answer:"学",choices:["学","覚","字","文"],hint:"神経回路を書き換え続ける行為"},
+  {id:'r08',kanji:"愛",answer:"愛",choices:["愛","受","変","恋"],hint:"オキシトシンが媒介する感情状態"},
+  {id:'r09',kanji:"夢",answer:"夢",choices:["夢","夜","寝","眠"],hint:"REM睡眠中に視床が生成する映像体験"},
+  {id:'r10',kanji:"春",answer:"春",choices:["春","夏","秋","冬"],hint:"北半球で太陽高度が回復していく三ヶ月"},
+  {id:'r11',kanji:"風",answer:"風",choices:["風","台","嵐","気"],hint:"気圧差が生み出す大気の水平移動"},
+  {id:'r12',kanji:"海",answer:"海",choices:["海","川","湖","池"],hint:"地球表面の71%を占める塩水の総称"},
+  {id:'r13',kanji:"星",answer:"星",choices:["星","日","月","火"],hint:"核融合反応を続けるプラズマの球体"},
+  {id:'r14',kanji:"道",answer:"道",choices:["道","通","路","街"],hint:"AからBへ到達するための地表の線形構造"},
+  {id:'r15',kanji:"命",answer:"命",choices:["命","令","生","寿"],hint:"代謝と自己複製を続ける間だけ成立する状態"},
+  {id:'r16',kanji:"龍",answer:"龍",choices:["龍","竜","虎","鳳"],hint:"東洋神話に登場する鱗を持つ想像上の存在"},
+  {id:'r17',kanji:"闇",answer:"闇",choices:["闇","暗","影","黒"],hint:"光子がほぼ存在しない空間の状態"},
+  {id:'r18',kanji:"嵐",answer:"嵐",choices:["嵐","風","台","暴"],hint:"山と風が合わさった激しい気象現象"},
+  {id:'r19',kanji:"鏡",answer:"鏡",choices:["鏡","銅","金","銀"],hint:"光を反射して虚像を生成する平面"},
+  {id:'r20',kanji:"縁",answer:"縁",choices:["縁","緑","線","絆"],hint:"仏教的因果律で結ばれた関係性"},
+  {id:'r21',kanji:"魂",answer:"魂",choices:["魂","鬼","魅","魔"],hint:"肉体に宿るとされる不可視の生命エネルギー"},
+  {id:'r22',kanji:"獄",answer:"獄",choices:["獄","狱","牢","監"],hint:"法的制裁として自由を奪う閉鎖空間"},
+  {id:'r23',kanji:"藤",answer:"藤",choices:["藤","蔓","葡","蓬"],hint:"春に紫の花を垂らす蔓性植物"},
+  {id:'r24',kanji:"霜",answer:"霜",choices:["霜","雪","露","氷"],hint:"零度以下の夜に地表に結晶する水蒸気"},
+  {id:'r25',kanji:"鶴",answer:"鶴",choices:["鶴","鷺","鷹","鴨"],hint:"千年生きるとされる白い長首の鳥"},
+  {id:'r26',kanji:"響",answer:"響",choices:["響","音","鳴","声"],hint:"空気の振動が壁や山に当たり返ってくる現象"},
+  {id:'r27',kanji:"憂",answer:"憂",choices:["憂","優","悩","惑"],hint:"将来の不確かさに対する持続的な感情状態"},
+  {id:'r28',kanji:"瀧",answer:"瀧",choices:["瀧","滝","波","流"],hint:"崖から大量の水が垂直に落下する自然現象"},
+  {id:'r29',kanji:"麒",answer:"麒",choices:["麒","麟","鹿","馬"],hint:"聖人が現れる前に姿を見せるとされる霊獣の前半"},
+  {id:'r30',kanji:"曖",answer:"曖",choices:["曖","昧","暗","曇"],hint:"関係性や意味が明確に定義されていない状態"},
+];
+
+const QUAD_ROTS=[[45,135,225,315],[90,180,270,0],[60,150,240,330],[120,210,300,30],[75,165,255,345]];
+
+// dayIndex に基づき解禁問題を取得（PER_DAY=10問/日）
+function getUnlocked(pool, dayIdx){
+  const count=Math.min(pool.length, (dayIdx+1)*PER_DAY);
+  return pool.slice(0,count);
+}
+
+let mode='hira';
+let score=0,total=0,answered=false,currentQ=null;
+let history={};
+
+async function loadHistory(){
+  try{const r=await window.storage.get('nk-hist-v7');if(r&&r.value)history=JSON.parse(r.value);}catch(e){history={};}
+}
+async function saveHistory(){
+  try{await window.storage.set('nk-hist-v7',JSON.stringify(history));}catch(e){}
+}
+
+function isLocked(id){
+  const h=history[id];if(!h)return false;
+  const now=Date.now();
+  const limit=h.correct?30*MS_DAY:3*MS_DAY;
+  if(now-h.ts<limit)return{until:new Date(h.ts+limit),correct:h.correct};
+  return false;
+}
+
+function getAvailable(pool,dayIdx){
+  return getUnlocked(pool,dayIdx).filter(d=>!isLocked(d.id));
+}
+
+function fmtUntil(d){
+  const jst=new Date(d.getTime());
+  return`${jst.getMonth()+1}月${jst.getDate()}日 ${String(jst.getHours()).padStart(2,'0')}:00`;
+}
+
+function shuffle(a){return a.slice().sort(()=>Math.random()-.5)}
+
+function switchMode(m){
+  mode=m;score=0;total=0;answered=false;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['hira','kanji','rotate'][i]===m));
+  nextQuestion();
+}
+
+function nextQuestion(){answered=false;currentQ=null;if(mode==='hira')renderHira();else if(mode==='kanji')renderKanji();else renderRotate();}
+
+function scoreBar(avail,unlocked){
+  return`<div class="score-bar">
+    <span>スコア</span><strong id="sc">${score} / ${total}</strong>
+    <span style="margin-left:auto;font-size:12px">残り <strong>${avail}</strong> / 解禁済 ${unlocked}</span>
+  </div>`;
+}
+function updateScore(){const e=document.getElementById('sc');if(e)e.textContent=`${score} / ${total}`;}
+
+async function record(id,correct){history[id]={ts:Date.now(),correct};await saveHistory();}
+
+function pool4Mode(){return mode==='hira'?ALL_HIRA:mode==='kanji'?ALL_KANJI:ALL_ROTATE;}
+
+function doneHTML(dayIdx){
+  const pool=pool4Mode();
+  const nextUnlock=Object.keys(history).map(id=>{const l=isLocked(id);return l?l.until:null;}).filter(Boolean).sort((a,b)=>a-b)[0];
+  const remaining=pool.length-getUnlocked(pool,dayIdx).length;
+  return`<div class="all-done">
+    <p>🎉 本日の問題は全て完了！</p>
+    ${nextUnlock?`<small>ロック解除予定：${fmtUntil(nextUnlock)}</small>`:''}
+    <small>${remaining>0?`明日0時にさらに${Math.min(remaining,PER_DAY)}問追加されます`:'全問題が解禁済みです'}</small>
+  </div>`;
+}
+
+/* ---- HIRA ---- */
+function renderHira(){
+  const dayIdx=jstDayIndex();
+  const unlocked=getUnlocked(ALL_HIRA,dayIdx);
+  const avail=getAvailable(ALL_HIRA,dayIdx);
+  if(avail.length===0){document.getElementById('quiz-area').innerHTML=scoreBar(0,unlocked.length)+doneHTML(dayIdx);return;}
+  const d=avail[Math.floor(Math.random()*avail.length)];
+  currentQ=d;
+  const shuffled=shuffle(d.word.split('')).join(' ');
+  const isNew=!history[d.id];
+  document.getElementById('quiz-area').innerHTML=scoreBar(avail.length,unlocked.length)+`<div class="quiz-card">
+    <div class="q-label">ひらがな並べ替えクイズ${isNew?'<span class="new-badge">NEW</span>':''}
+      <span style="float:right;font-size:11px;color:var(--color-text-secondary)">${d.id.toUpperCase()}</span>
+    </div>
+    <div class="q-main" style="font-size:20px;letter-spacing:.12em">${shuffled}</div>
+    <div class="hint">💡 ${d.hint}</div>
+    <input class="type-input" id="typein" type="text" placeholder="ひらがなで入力..." autocomplete="off" onkeydown="if(event.key==='Enter')submitHira()">
+    <button class="submit-btn" onclick="submitHira()">答え合わせ ↵</button>
+    <div id="rmsg" class="rmsg"></div>
+    <button class="action-btn" id="nb" style="display:none" onclick="nextQuestion()">次の問題へ →</button>
+  </div>`;
+  document.getElementById('typein').focus();
+}
+
+async function submitHira(){
+  if(answered||!currentQ)return;
+  const inp=document.getElementById('typein');
+  const val=inp.value.trim().replace(/\s/g,'');
+  if(!val)return;
+  answered=true;total++;
+  inp.disabled=true;
+  const ok=val===currentQ.answer;
+  if(ok){score++;inp.classList.add('ok');}else inp.classList.add('ng');
+  const msg=document.getElementById('rmsg');
+  msg.className=ok?'rmsg ok':'rmsg ng';
+  msg.textContent=ok?'🎉 正解！ — 1ヶ月後に再出題':`❌ 不正解。正解は「${currentQ.answer}」— 3日後に再挑戦`;
+  await record(currentQ.id,ok);
+  document.getElementById('nb').style.display='block';
+  updateScore();
+}
+
+/* ---- KANJI DECOMP ---- */
+function renderKanji(){
+  const dayIdx=jstDayIndex();
+  const unlocked=getUnlocked(ALL_KANJI,dayIdx);
+  const avail=getAvailable(ALL_KANJI,dayIdx);
+  if(avail.length===0){document.getElementById('quiz-area').innerHTML=scoreBar(0,unlocked.length)+doneHTML(dayIdx);return;}
+  const d=avail[Math.floor(Math.random()*avail.length)];
+  currentQ=d;
+  const isNew=!history[d.id];
+  const W=190,H=150;
+  let pts='';
+  d.svgParts.forEach(p=>{
+    const fs=Math.round(54*(p.scale||1));
+    pts+=`<text x="${p.x}" y="${p.y}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle" fill="var(--color-text-primary)" transform="rotate(${p.rotate},${p.x},${p.y})">${p.char}</text>`;
+  });
+  const svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${pts}</svg>`;
+  const choices=shuffle(d.choices);
+  document.getElementById('quiz-area').innerHTML=scoreBar(avail.length,unlocked.length)+`<div class="quiz-card">
+    <div class="q-label">漢字分解クイズ${isNew?'<span class="new-badge">NEW</span>':''}
+      <span style="float:right;font-size:11px;color:var(--color-text-secondary)">${d.id.toUpperCase()}</span>
+    </div>
+    <div class="q-main">${svg}</div>
+    <div class="hint">💡 ${d.hint}</div>
+    <div class="choices">${choices.map(c=>`<button class="choice" onclick="answerKanji(this,'${c}','${d.answer}')">${c}</button>`).join('')}</div>
+    <div id="rmsg" class="rmsg"></div>
+    <button class="action-btn" id="nb" style="display:none" onclick="nextQuestion()">次の問題へ →</button>
+  </div>`;
+}
+
+async function answerKanji(el,chosen,correct){
+  if(answered)return;
+  answered=true;total++;
+  document.querySelectorAll('.choice').forEach(b=>{b.disabled=true;if(b.textContent.trim()===correct)b.classList.add('correct');});
+  const ok=chosen===correct;
+  if(ok)score++;
+  el.classList.add(ok?'correct':'wrong');
+  const msg=document.getElementById('rmsg');
+  msg.className=ok?'rmsg ok':'rmsg ng';
+  msg.textContent=ok?'🎉 正解！ — 1ヶ月後に再出題':`❌ 不正解。正解は「${correct}」— 3日後に再挑戦`;
+  await record(currentQ.id,ok);
+  document.getElementById('nb').style.display='block';
+  updateScore();
+}
+
+/* ---- ROTATE ---- */
+function renderRotate(){
+  const dayIdx=jstDayIndex();
+  const unlocked=getUnlocked(ALL_ROTATE,dayIdx);
+  const avail=getAvailable(ALL_ROTATE,dayIdx);
+  if(avail.length===0){document.getElementById('quiz-area').innerHTML=scoreBar(0,unlocked.length)+doneHTML(dayIdx);return;}
+  const d=avail[Math.floor(Math.random()*avail.length)];
+  currentQ=d;
+  const isNew=!history[d.id];
+  const choices=shuffle(d.choices);
+  document.getElementById('quiz-area').innerHTML=scoreBar(avail.length,unlocked.length)+`<div class="quiz-card">
+    <div class="q-label">漢字4分割回転クイズ${isNew?'<span class="new-badge">NEW</span>':''}
+      <span style="float:right;font-size:11px;color:var(--color-text-secondary)">${d.id.toUpperCase()}</span>
+    </div>
+    <div class="q-main" style="padding:1rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;width:184px;height:184px;margin:0 auto">
+        ${[0,1,2,3].map(i=>`<canvas id="qc${i}" width="88" height="88" style="border:0.5px solid var(--color-border-tertiary);border-radius:4px"></canvas>`).join('')}
+      </div>
+    </div>
+    <div class="hint">💡 ${d.hint}</div>
+    <div class="choices">${choices.map(c=>`<button class="choice" onclick="answerRotate(this,'${c}','${d.answer}')">${c}</button>`).join('')}</div>
+    <div id="rmsg" class="rmsg"></div>
+    <button class="action-btn" id="nb" style="display:none" onclick="nextQuestion()">次の問題へ →</button>
+  </div>`;
+  drawQuad(d.kanji);
+}
+
+function drawQuad(kanji){
+  const SZ=200;
+  const off=document.createElement('canvas');off.width=SZ;off.height=SZ;
+  const ctx=off.getContext('2d');
+  const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  ctx.fillStyle=dark?'#e8e6df':'#1a1916';
+  ctx.font=`${Math.round(SZ*.82)}px serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(kanji,SZ/2,SZ/2);
+  const rots=QUAD_ROTS[Math.floor(Math.random()*QUAD_ROTS.length)];
+  [{sx:0,sy:0},{sx:SZ/2,sy:0},{sx:0,sy:SZ/2},{sx:SZ/2,sy:SZ/2}].forEach((q,i)=>{
+    const cv=document.getElementById('qc'+i);if(!cv)return;
+    const c=cv.getContext('2d');const W=88;
+    c.fillStyle=dark?'#1a1916':'#f5f4ef';c.fillRect(0,0,W,W);
+    c.save();c.translate(W/2,W/2);c.rotate(rots[i]*Math.PI/180);
+    const sc=(W/(SZ/2))*.92;c.scale(sc,sc);
+    c.drawImage(off,q.sx,q.sy,SZ/2,SZ/2,-SZ/4,-SZ/4,SZ/2,SZ/2);
+    c.restore();
+  });
+}
+
+async function answerRotate(el,chosen,correct){
+  if(answered)return;
+  answered=true;total++;
+  document.querySelectorAll('.choice').forEach(b=>{b.disabled=true;if(b.textContent.trim()===correct)b.classList.add('correct');});
+  const ok=chosen===correct;
+  if(ok)score++;
+  el.classList.add(ok?'correct':'wrong');
+  const msg=document.getElementById('rmsg');
+  msg.className=ok?'rmsg ok':'rmsg ng';
+  msg.textContent=ok?'🎉 正解！ — 1ヶ月後に再出題':`❌ 不正解。正解は「${correct}」— 3日後に再挑戦`;
+  await record(currentQ.id,ok);
+  document.getElementById('nb').style.display='block';
+  updateScore();
+}
+
+(async()=>{
+  await loadHistory();
+  document.getElementById('date-label').textContent=`${jstTodayStr()} — 本日の問題`;
+  nextQuestion();
+})();
+</script>
